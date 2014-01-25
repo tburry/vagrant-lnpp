@@ -23,19 +23,19 @@ server {
   # Rewrite to prettify the URL and hide the ugly PHP stuff
   #
   location @forum {
-    rewrite ^/(.+)$ /index.php?p=$1 last;
+    rewrite ^/(.+)$ /index.php/$1 last;
   }
 
   # Rewrite the utility class as the prettified version is used by Garden
   #
-  location ~* ^/utility/ {
-    rewrite ^/(.+)$ /index.php?p=$1 last;
-  }
+  #location ~* ^/utility/ {
+  #  rewrite ^/(.+)$ /index.php?p=$1 last;
+  #}
 
   # PHP handler
   #
-  location ~ \.php$ {
-    try_files                $uri =404;
+  location ~ index\.php(/|$) {
+    fastcgi_split_path_info ^(.+?\.php)(/.*)$;
     include                  fastcgi_params;
     fastcgi_index            <%= @index %>;
     fastcgi_param            SCRIPT_FILENAME $document_root$fastcgi_script_name;
