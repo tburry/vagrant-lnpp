@@ -20,8 +20,27 @@ server {
   client_max_body_size 100M;
   fastcgi_read_timeout 1800;
 
-  # Timeouts
-  # error_page 404 408 409 502 504 = @errors;
+  # Try and figure out the language.
+  set $language en;
+  if ($http_accept_language ~* '^(.+?)(-\w+)?,') {
+      set $language $1;
+  }
+
+  # Error pages.
+  error_page 403 /errors/403.html;
+  error_page 404 /errors/404.html;
+  error_page 408 /errors/408.html;
+  error_page 409 /errors/409.html;
+  error_page 500 /errors/500.html;
+  error_page 502 /errors/502.html;
+  error_page 504 /errors/504.html;
+
+  # Match errors and allow for a domain-specific error.
+  location ~* "^/errors/(?<error_file>\d+\.html$)" {
+      internal;
+
+      try_files /errors/$host/$language/$error_file /errors/$host/$error_file /errors/$language/$error_file /errors/default.html;
+  }
 
   # location @errors {
   #   try_files /errors/404.html /errors/default.html;
@@ -38,7 +57,8 @@ server {
     # Handle all php scripts.
     location ~* "\.php(/|$)" {
       fastcgi_pass              php;
-      fastcgi_intercept_errors  on;
+      fastcgi_intercept_errors  off;
+
 
       fastcgi_split_path_info   ^(.+?\.php)(/.*)$;
       include                   fastcgi_params;
@@ -51,7 +71,7 @@ server {
   location ~* "^/_index\.php(/|$)" {
     internal;
     fastcgi_pass              php;
-    fastcgi_intercept_errors  on;
+    # fastcgi_intercept_errors  on;
 
     fastcgi_split_path_info   "(^.+?\.php)(.*)?$";
     include                   fastcgi_params;
