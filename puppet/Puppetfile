@@ -10,7 +10,8 @@ mod "nginx",
     :git => "git://github.com/davidwinter/puppet-nginx.git"
 
 mod "percona",
-    :git => "git://github.com/arioch/puppet-percona.git"
+    :git => "git://github.com/kasperisager/puppet-percona.git",
+    :ref => "template-variables-fix"
 
 mod "vcsrepo",
     :git => "git://github.com/puppetlabs/puppetlabs-vcsrepo.git"
