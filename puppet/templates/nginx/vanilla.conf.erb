@@ -39,7 +39,7 @@ server {
   location ~* "^/errors/(?<error_file>\d+\.html$)" {
       internal;
 
-      try_files /errors/$host/$language/$error_file /errors/$host/$error_file /errors/$language/$error_file /errors/default.html;
+      try_files /errors/$host/$language/$error_file /errors/$host/$error_file /errors/$language/$error_file /errors/en/$error_file /errors/default.html;
   }
 
   # location @errors {
