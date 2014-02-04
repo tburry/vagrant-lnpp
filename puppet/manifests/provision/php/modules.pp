@@ -14,7 +14,7 @@ class provision::php::modules
     notify => $notify_services
   }
 
-  php::module { [ "gd", "mysql", "sqlite", "mcrypt", "memcache", "xdebug" ]:
+  php::module { [ "gd", "mysql", "sqlite", "mcrypt", "memcache", "xdebug", "json" ]:
     notify  => $notify_services,
     content => $php_ini_dir
   }
