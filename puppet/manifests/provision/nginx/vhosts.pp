@@ -6,6 +6,11 @@ class provision::nginx::vhosts
   $sites_dir = $core::params::sites_dir
   $nginx_dir = "${core::params::templates_dir}/nginx"
 
+  file { "/etc/nginx/fastcgi.conf":
+    ensure => file,
+    source => "${nginx_dir}/fastcgi.conf.erb"
+  }
+
   nginx::vhost { "default":
     root     => "${sites_dir}/default",
     index    => "index.php",
