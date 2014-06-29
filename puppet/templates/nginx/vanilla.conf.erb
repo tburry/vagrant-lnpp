@@ -20,31 +20,7 @@ server {
   client_max_body_size 100M;
   fastcgi_read_timeout 1800;
 
-  # Try and figure out the language.
-  set $language en;
-  if ($http_accept_language ~* '^(.+?)(-\w+)?,') {
-      set $language $1;
-  }
-
-  # Error pages.
-  error_page 403 /errors/403.html;
-  error_page 404 /errors/404.html;
-  error_page 408 /errors/408.html;
-  error_page 409 /errors/409.html;
-  error_page 500 /errors/500.html;
-  error_page 502 /errors/502.html;
-  error_page 504 /errors/504.html;
-
-  # Match errors and allow for a domain-specific error.
-  location ~* "^/errors/(?<error_file>\d+\.html$)" {
-      internal;
-
-      try_files /errors/$host/$language/$error_file /errors/$host/$error_file /errors/$language/$error_file /errors/en/$error_file /errors/default.html;
-  }
-
-  # location @errors {
-  #   try_files /errors/404.html /errors/default.html;
-  # }
+  include error_pages.conf;
 
   ## Disable viewing .htaccess & .htpassword
   location ~ "/\..+" { deny all; return 404; }
@@ -56,41 +32,36 @@ server {
 
     # Handle all php scripts.
     location ~* "\.php(/|$)" {
-      fastcgi_pass              php;
+      fastcgi_pass              <%= @php_server %>;
       fastcgi_intercept_errors  off;
 
 
       fastcgi_split_path_info   ^(.+?\.php)(/.*)$;
-      include                   fastcgi_params;
-      fastcgi_param             PATH_INFO $fastcgi_path_info;
-      fastcgi_param             SCRIPT_FILENAME $document_root$fastcgi_script_name;
+      include                   fastcgi.conf;
     }
   }
 
   # This is the php handler for all vanilla requests.
-  location ~* "^/_index\.php(/|$)" {
+  location ~* "^/x/index\.php(/|$)" {
     internal;
-    fastcgi_pass              php;
-    # fastcgi_intercept_errors  on;
 
-    fastcgi_split_path_info   "(^.+?\.php)(.*)?$";
-    include                   fastcgi_params;
-    fastcgi_param             SCRIPT_NAME /index.php;
-    fastcgi_param             PATH_INFO $fastcgi_path_info;
-    fastcgi_param             SCRIPT_FILENAME $document_root/<%= @index %>;
+    fastcgi_split_path_info   "^/x(/index\.php)(.*)?$";
+    include                   fastcgi.conf;
     fastcgi_param             REQUEST_REWRITE $request_rewrite;
+    fastcgi_index             <%= @index %>;
+    fastcgi_pass              <%= @php_server %>;
   }
 
   # Redirect the base index.php file to the pretty url.
   location ~* "^/index\.php(/|$)" {
-    rewrite "^/index\.php(/.*)$" $1?x-redirected=index.php permanent;
-    rewrite "^" /?x-redirected=index.php  permanent;
+     rewrite "^/index\.php(/.*)$" $1?x-redirected=index.php permanent;
+     rewrite "^" /?x-redirected=index.php  permanent;
   }
 
   # Rewrite all php files through the framework.
   location ~* "\.php(/|$)" {
     set $request_rewrite 1;
-    rewrite ^ /_index.php$uri last;
+    rewrite ^ /x/index.php$uri last;
   }
 
   # Default location.
@@ -101,7 +72,7 @@ server {
   # Rewrite all files that aren't found to the base php handler.
   location @vanilla {
     set $request_rewrite 1;
-    rewrite ^ /_index.php$uri last;
+    rewrite ^ /x/index.php$uri last;
   }
 
   # Stop things from executing in the uploads directory
@@ -124,8 +95,4 @@ server {
     expires       max;
     log_not_found off;
   }
-}
-
-upstream php {
-   server unix:/var/run/php5-fpm.sock;
 }
