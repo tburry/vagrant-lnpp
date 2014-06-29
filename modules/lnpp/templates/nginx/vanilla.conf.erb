@@ -1,0 +1,97 @@
+# Nginx configuration file for use with Vanilla Forums 2.1
+#
+# A huge thanks goes out to Lee Hutchinson (@Lee_Ars) for writing this wonderful
+# configuration in the first place. I've merely done a bit of "templifi-ing" so
+# that it may be used in conjunction with the puppet-nginx resource.
+#
+server {
+  server_name <%= @server_name %>;
+  root        <%= @root %>;
+  # Do not allow an index at the top level. Everything goes through vanilla.
+  # index       <%= @index %>;
+
+  # Uncomment this line to debug locations.
+  error_log /var/log/nginx/error.log notice;
+  rewrite_log on;
+  log_subrequest on;
+
+  autoindex            off;
+  client_max_body_size 100M;
+  fastcgi_read_timeout 1800;
+
+  include error_pages.conf;
+
+  ## Disable viewing .htaccess & .htpassword
+  location ~ "/\..+" { deny all; return 404; }
+  location ~* "/conf/.*$" { deny all; return 403; }
+
+  # The cgi-bin is for ad-hoc scripts that don't get touched by vanilla.
+  location ^~ /cgi-bin/ {
+    index index.html index.htm index.php;
+
+    # Handle all php scripts.
+    location ~* "\.php(/|$)" {
+      fastcgi_pass              <%= @php_server %>;
+      fastcgi_intercept_errors  off;
+
+
+      fastcgi_split_path_info   ^(.+?\.php)(/.*)$;
+      include                   fastcgi.conf;
+    }
+  }
+
+  # This is the php handler for all vanilla requests.
+  location ~* "^/x/index\.php(/|$)" {
+    internal;
+
+    fastcgi_split_path_info   "^/x(/index\.php)(.*)?$";
+    include                   fastcgi.conf;
+    fastcgi_param             REQUEST_REWRITE $request_rewrite;
+    fastcgi_index             <%= @index %>;
+    fastcgi_pass              <%= @php_server %>;
+  }
+
+  # Redirect the base index.php file to the pretty url.
+  location ~* "^/index\.php(/|$)" {
+     rewrite "^/index\.php(/.*)$" $1?x-redirected=index.php permanent;
+     rewrite "^" /?x-redirected=index.php  permanent;
+  }
+
+  # Rewrite all php files through the framework.
+  location ~* "\.php(/|$)" {
+    set $request_rewrite 1;
+    rewrite ^ /x/index.php$uri last;
+  }
+
+  # Default location.
+  location / {
+    try_files $uri @vanilla;
+  }
+
+  # Rewrite all files that aren't found to the base php handler.
+  location @vanilla {
+    set $request_rewrite 1;
+    rewrite ^ /x/index.php$uri last;
+  }
+
+  # Precent files from executing in the uploads directory
+  #
+  location ~* ^/uploads/.*.(html|htm|shtml|php)$ {
+    types { }
+    default_type text/plain;
+  }
+
+  # Deny, drop, or internal locations
+  #
+  location ~ /\.         { access_log off; log_not_found off; deny all; }
+  location ~ ~$          { access_log off; log_not_found off; deny all; }
+  location = /robots.txt { access_log off; log_not_found off; }
+  location ^~ favicon    { access_log off; log_not_found off; }
+
+  # Taking advantage of browser caching for static assets
+  #
+  location ~* \.(js|css|png|jpg|jpeg|gif|ico|eot|woff|ttf|svg)$ {
+    expires       max;
+    log_not_found off;
+  }
+}
